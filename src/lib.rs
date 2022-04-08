@@ -1,4 +1,3 @@
-use std::env;
 use std::thread;
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -7,30 +6,6 @@ use std::sync::Mutex;
 enum Message {
     NewJob(Job),
     Terminate,
-}
-
-pub struct Config {
-    pub port: usize,
-}
-
-impl Config {
-    pub fn new(mut args: env::Args) -> Result<Config, &'static str> {
-        args.next();
-
-        let error = "parameter must be a positive integer";
-
-        let mut port = match args.next() {
-            Some(arg) => arg.parse::<usize>().expect(&format!("port {}", error)),
-            None => return Err("Didn't get a port"),
-        };
-        if ! env::var("SOURV_PORT").is_err() {
-            port = env::var("SOURV_PORT").unwrap().parse::<usize>().expect(&format!("SOURV_PORT {}", error));
-        }
-
-        Ok(Config { 
-            port, 
-         })
-    }
 }
 
 pub struct ThreadPool {

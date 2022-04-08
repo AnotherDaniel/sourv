@@ -1,26 +1,94 @@
 use std::error::Error;
-use std::env;
 use std::process;
 use std::io::prelude::*;
+use std::io::Cursor;
 use std::str;
+use std::env;
 use std::net::TcpListener;
 use std::net::TcpStream;
-use sourv::ThreadPool;
-use std::io::Cursor;
-use rodio::{Decoder, OutputStream, source::Source};
+use std::ops::RangeInclusive;
+use rodio::{Decoder, OutputStream, Sink};
 use include_dir::{include_dir, Dir};
-use sourv::Config;
+use clap::Parser;
+use sourv::ThreadPool;
 
 static PROJECT_DIR: Dir = include_dir!("./assets");
 
 // TODOs
 // - error handling
 
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+/// Play a sound by GETting a web URL, provides endpoints /health and /stapler
+pub struct Args {
+    /// Port to listen on
+    #[clap(short, long, default_value_t = 7878, parse(try_from_str=port_in_range))]
+    port: usize,
+
+    /// Sound volume (from 0.0 - 2.0) 
+    #[clap(short, long, default_value_t = 1.0, parse(try_from_str=volume_in_range))]
+    volume: f32,
+}
+
+const PORT_RANGE: RangeInclusive<usize> = 1..=65535;
+fn port_in_range(s: &str) -> Result<usize, String> {
+    let port: usize = s
+        .parse()
+        .map_err(|_| format!("`{}` isn't a port number", s))?;
+    if PORT_RANGE.contains(&port) {
+        Ok(port)
+    } else {
+        Err(format!(
+            "Port not in range {}-{}",
+            PORT_RANGE.start(),
+            PORT_RANGE.end()
+        ))
+    }
+}
+
+const VOLUME_RANGE: RangeInclusive<f32> = 0.0..=2.0;
+fn volume_in_range(s: &str) -> Result<f32, String> {
+    let volume: f32 = s
+        .parse()
+        .map_err(|_| format!("`{}` isn't a float", s))?;
+    if VOLUME_RANGE.contains(&volume) {
+        Ok(volume)
+    } else {
+        Err(format!(
+            "Volume not in range {:.1}-{:.1}",
+            VOLUME_RANGE.start(),
+            VOLUME_RANGE.end()
+        ))
+    }
+}
+
+pub struct Config {
+    pub port: usize,
+    pub volume: f32,
+}
+
+impl Config {
+    pub fn new(args: &Args) -> Result<Config, &'static str> {
+        let mut port = args.port;
+        let mut volume = args.volume;
+
+        if ! env::var("SOURV_PORT").is_err() {
+            port = port_in_range(&env::var("SOURV_PORT").unwrap()).unwrap();
+        }
+        if ! env::var("SOURV_VOLUME").is_err() {
+            volume = volume_in_range(&env::var("SOURV_VOLUME").unwrap()).unwrap();
+        }
+
+        Ok(Config { 
+            port, 
+            volume,
+         })
+    }
+}
+
 fn main() {
-    let config = Config::new(env::args()).unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {}", err);
-        process::exit(1);
-    });
+    let args = Args::parse();
+    let config = Config::new(&args).unwrap();
 
     if let Err(e) = run(config) {
         eprintln!("Application error: {}", e);
@@ -29,7 +97,7 @@ fn main() {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).unwrap();
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).unwrap();    // TODO error handling
     let pool = ThreadPool::new(2);
 
     for stream in listener.incoming() {
@@ -79,7 +147,8 @@ fn stapling_sound() {
     let source = Decoder::new(cursor).unwrap();
 
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    stream_handle.play_raw(source.convert_samples()).unwrap();
-    
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    let sink = Sink::try_new(&stream_handle).unwrap();
+    sink.append(source);
+    sink.set_volume(2.0);
+    sink.sleep_until_end();
 }
