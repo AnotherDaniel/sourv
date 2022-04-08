@@ -1,0 +1,10 @@
+version: '3.5'
+
+services:
+  sourv:
+    image: agoodcontainer/sourv:0.1.0
+    container_name: sourv
+    build: .
+    restart: always
+    ports:
+      - 7878:7878
