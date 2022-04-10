@@ -16,6 +16,7 @@ static PROJECT_DIR: Dir = include_dir!("./assets");
 
 // TODOs
 // - error handling
+// - split out cli handling from main.rs
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -97,7 +98,7 @@ fn main() {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).unwrap();    // TODO error handling
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", config.port)).unwrap();    // TODO error handling
     let pool = ThreadPool::new(2);
 
     for stream in listener.incoming() {

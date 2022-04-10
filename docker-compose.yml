@@ -1,9 +1,11 @@
-version: '3.5'
+version: '3'
 
 services:
   sourv:
-    image: agoodcontainer/sourv:0.1.0
+#    image: agoodcontainer/sourv:0.1.0
     container_name: sourv
+    volumes:
+      - /run/user/ubuntu/pulse:/run/user/1000/pulse
     build: .
     restart: always
     ports:
