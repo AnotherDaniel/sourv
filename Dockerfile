@@ -23,6 +23,9 @@ FROM arm64v8/alpine:latest
 EXPOSE 7878
 ENV TZ=Etc/UTC 
 
+RUN apk update && \
+    apk add --no-cache pulseaudio pulseaudio-alsa
+	
 ENV UNAME sourv
 RUN export UNAME=$UNAME UID=1000 GID=1000 && \
 	addgroup -g ${GID} ${UNAME} && \

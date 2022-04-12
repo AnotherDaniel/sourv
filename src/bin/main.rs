@@ -88,6 +88,8 @@ impl Config {
 }
 
 fn main() {
+    println!("Yes, we're running!");
+
     let args = Args::parse();
     let config = Config::new(&args).unwrap();
 
