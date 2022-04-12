@@ -3,12 +3,9 @@ FROM arm64v8/alpine:latest AS base
 # COPY qemu-aarch64-static /usr/bin/qemu-aarch64-static
 WORKDIR /usr/bin
 RUN apk update && \
-    apk add --no-cache pkgconfig pulseaudio pulseaudio-alsa alsa-lib-dev build-base musl-dev rustup && \
-	wget https://github.com/multiarch/qemu-user-static/releases/download/v6.1.0-8/qemu-aarch64-static
-
+    apk add --no-cache pkgconfig pulseaudio pulseaudio-alsa alsa-lib-dev build-base musl-dev rustup
 RUN	rustup-init -yq && \
-	source $HOME/.cargo/env && \
-	rustup target add aarch64-unknown-linux-musl
+	source $HOME/.cargo/env
 
 WORKDIR /usr/src
 RUN	source $HOME/.cargo/env && \
@@ -16,7 +13,7 @@ RUN	source $HOME/.cargo/env && \
 WORKDIR /usr/src/sourv
 COPY . .
 RUN	source $HOME/.cargo/env && \
-	cargo build --target aarch64-unknown-linux-musl --release
+	cargo build --release
 
 # Transferring build artifacts to minimal docker
 FROM arm64v8/alpine:latest
@@ -36,6 +33,6 @@ RUN export UNAME=$UNAME UID=1000 GID=1000 && \
 COPY pulse-client.conf /etc/pulse/client.conf
 USER $UNAME
 
-COPY --from=base /usr/src/sourv/target/aarch64-unknown-linux-musl/release/main /usr/local/bin/sourv
+COPY --from=base /usr/src/sourv/target/release/main /usr/local/bin/sourv
 
 CMD ["/usr/local/bin/sourv"]
