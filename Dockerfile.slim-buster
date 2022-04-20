@@ -1,0 +1,45 @@
+FROM rust:slim-buster as base
+#ARG TARGET=x86_64-unknown-linux-musl
+ARG TARGET=aarch64-unknown-linux-musl   
+
+WORKDIR /usr/src
+RUN apt-get update && apt-get dist-upgrade -y && \
+    rm -rf /var/lib/apt/lists/*apk && \
+    apt-get install -y apt-utils pkg-config && \
+    apt-get install -y musl-dev && \
+    apt-get install -y pulseaudio libasound2-dev && \
+    rustup target add ${TARGET}
+
+FROM base as builder
+WORKDIR /usr/src
+RUN	mkdir sourv
+WORKDIR /usr/src/sourv
+COPY . .
+RUN	cargo build --release
+
+
+FROM base as runner 
+#FROM scratch
+EXPOSE 7878
+ENV TZ=Etc/UTC 
+
+RUN apt-get update && apt-get dist-upgrade -y && \
+    apt-get install -y apt-utils pulseaudio
+    
+ENV UNAME sourv
+RUN export UNAME=$UNAME UID=1000 GID=1000 && \
+	addgroup --gid ${GID} ${UNAME} && \
+	adduser \
+	--disabled-password \
+    --gecos "" \
+    --home "/home/$UNAME" \
+    --ingroup "$UNAME" \
+    --uid "$UID" \
+    "$UNAME" && \
+    adduser "$UNAME" audio
+COPY pulse-client.conf /etc/pulse/client.conf
+USER $UNAME
+
+COPY --from=builder /usr/src/sourv/target/release/main /usr/local/bin/sourv
+
+CMD ["/usr/local/bin/sourv"]
